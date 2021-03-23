@@ -75,7 +75,7 @@ func Englishness(b []byte) float64 {
 	var count int
 	for _, v := range b {
 		if v == ' ' || v == 'e' || v == 't' || v == 'a' {
-			count += 1
+			count++
 		}
 	}
 
@@ -95,7 +95,7 @@ func Entropy(b []byte) float64 {
 	)
 
 	for _, v := range b {
-		freq[v] += 1
+		freq[v]++
 	}
 
 	for _, v := range freq {

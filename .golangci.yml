@@ -1,0 +1,26 @@
+linters:
+  enable:
+    - deadcode
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+    - exhaustive
+    - exportloopref
+    - goconst
+    - gocritic
+    - gofumpt
+    - nilerr
+    - prealloc
+    - revive
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - wastedassign
+    - scopelint
