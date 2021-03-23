@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"math"
 )
 
 // HexToBase64 converts hex strings to Base64 strings.
@@ -64,4 +65,63 @@ func SingleXORRecoverKey(ct []byte) (byte, error) {
 	// In Western languages, the most common byte
 	// is usually an ASCII space.
 	return mode ^ ' ', nil
+}
+
+// Entropy calculates the entropy of a byte slice.
+// Adapted from https://rosettacode.org/wiki/Entropy#Go
+func Entropy(b []byte) float64 {
+	if len(b) == 0 {
+		return 0
+	}
+
+	var (
+		entropy float64
+		freq    = make(map[byte]float64)
+	)
+
+	for _, v := range b {
+		freq[v] += 1
+	}
+
+	for _, v := range freq {
+		if v > 0 {
+			entropy += -v * math.Log2(v/float64(len(b)))
+		}
+	}
+
+	return entropy
+}
+
+// SingleXORDetect chooses a likely single-XOR-encrypted
+// ciphertext from multiple ciphertexts. It selects
+// the ciphertext with the lowest entropy.
+func SingleXORDetect(cts [][]byte) ([]byte, error) {
+	if len(cts) == 0 {
+		return nil, fmt.Errorf("empty ciphertexts")
+	}
+
+	var (
+		bestEntropy = math.MaxFloat64 // lower is better
+		bestCT      []byte
+	)
+
+	for _, ct := range cts {
+		e := Entropy(ct)
+		if e < bestEntropy {
+			bestEntropy = e
+			bestCT = ct
+		}
+	}
+
+	return bestCT, nil
+}
+
+// SingleXORBreak breaks single-XOR encryption
+// and returns a likely plaintext.
+func SingleXORBreak(ct []byte) ([]byte, error) {
+	key, err := SingleXORRecoverKey(ct)
+	if err != nil {
+		return nil, err
+	}
+	return XORByte(ct, key), nil
 }

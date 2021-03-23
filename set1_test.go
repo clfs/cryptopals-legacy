@@ -3,6 +3,7 @@ package cryptopals
 import (
 	"bytes"
 	"encoding/hex"
+	"os"
 	"testing"
 )
 
@@ -10,9 +11,18 @@ func HelperHexDecode(tb testing.TB, s string) []byte {
 	tb.Helper()
 	h, err := hex.DecodeString(s)
 	if err != nil {
-		tb.Errorf("invalid string %s: err", s)
+		tb.Fatalf("could not decode %s: %v", s, err)
 	}
 	return h
+}
+
+func HelperReadFile(tb testing.TB, name string) []byte {
+	tb.Helper()
+	res, err := os.ReadFile(name)
+	if err != nil {
+		tb.Fatalf("could not read %s: %v", name, err)
+	}
+	return res
 }
 
 func TestHexToBase64(t *testing.T) {
@@ -27,7 +37,7 @@ func TestHexToBase64(t *testing.T) {
 		t.Error(err)
 	}
 	if got != want {
-		t.Errorf("got %v, want %v", got, want)
+		t.Errorf("got %s, want %s", got, want)
 	}
 }
 
@@ -60,7 +70,34 @@ func TestSingleXORRecoverKey(t *testing.T) {
 		t.Error(err)
 	}
 	if got != want {
-		t.Fatalf("got %v, want %v", got, want)
+		t.Errorf("got %x, want %x", got, want)
 	}
-	t.Logf("success: %s", XORByte(ct, got))
+
+	t.Logf("solve: %s", XORByte(ct, got))
+}
+
+func TestDetectSingleXOR(t *testing.T) {
+	t.Parallel()
+	var (
+		data = HelperReadFile(t, "testdata/4.txt")
+		want = HelperHexDecode(t, "7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f")
+		cts  = make([][]byte, 0)
+	)
+	for _, h := range bytes.Split(data, []byte("\n")) {
+		cts = append(cts, HelperHexDecode(t, string(h)))
+	}
+
+	got, err := SingleXORDetect(cts)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Errorf("got %x, want %x", got, want)
+	}
+	pt, err := SingleXORBreak(got)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Logf("solve: %s", pt)
 }
