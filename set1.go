@@ -125,3 +125,11 @@ func SingleXORBreak(ct []byte) ([]byte, error) {
 	}
 	return XORByte(ct, key), nil
 }
+
+func RepeatingXOR(b, key []byte) []byte {
+	res := make([]byte, len(b))
+	for i := range b {
+		res[i] = b[i%len(key)]
+	}
+	return res
+}
