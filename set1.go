@@ -1,6 +1,7 @@
 package cryptopals
 
 import (
+	"crypto/cipher"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -226,4 +227,16 @@ func RepeatingXORFindKeySize(ct []byte, a, b int) (int, error) {
 	}
 
 	return bestSize, nil
+}
+
+// ECBDecrypt decrypts an ECB ciphertext.
+func ECBDecrypt(ct []byte, b cipher.Block) ([]byte, error) {
+	if len(ct)%b.BlockSize() != 0 {
+		return nil, fmt.Errorf("invalid ECB ciphertext")
+	}
+	pt := make([]byte, len(ct))
+	for i := 0; i < len(pt); i += b.BlockSize() {
+		b.Decrypt(pt[i:], ct[i:])
+	}
+	return pt, nil
 }

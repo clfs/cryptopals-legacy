@@ -2,6 +2,7 @@ package cryptopals
 
 import (
 	"bytes"
+	"crypto/aes"
 	"encoding/base64"
 	"encoding/hex"
 	"os"
@@ -167,4 +168,23 @@ func TestRepeatingXORFindKey(t *testing.T) {
 	}
 
 	t.Logf("solve: %s", RepeatingXOR(ct, got))
+}
+
+func TestECBDecrypt(t *testing.T) {
+	t.Parallel()
+	var (
+		ct  = HelperReadFileBase64(t, "testdata/7.txt")
+		key = []byte("YELLOW SUBMARINE")
+	)
+
+	cipher, err := aes.NewCipher(key)
+	if err != nil {
+		t.Error(err)
+	}
+	pt, err := ECBDecrypt(ct, cipher)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Logf("solve: %s", pt)
 }
