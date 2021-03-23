@@ -240,3 +240,25 @@ func ECBDecrypt(ct []byte, b cipher.Block) ([]byte, error) {
 	}
 	return pt, nil
 }
+
+// Is128ECB returns true if the ciphertext is likely
+// encrypted with 128-bit ECB.
+func Is128ECB(ct []byte) bool {
+	if len(ct)%16 != 0 {
+		return false
+	}
+
+	// The lack of set types is absurdly annoying.
+	cache := make(map[string]struct{})
+	for i := 0; i < len(ct); i += 16 {
+		k := string(ct[i : i+16])
+		_, ok := cache[k]
+		if !ok { // Cache miss.
+			cache[k] = struct{}{}
+		} else { // Cache hit.
+			return true
+		}
+	}
+
+	return false
+}

@@ -188,3 +188,29 @@ func TestChallenge7(t *testing.T) {
 
 	t.Logf("solve: %s", pt)
 }
+
+func TestChallenge8(t *testing.T) {
+	t.Parallel()
+	var (
+		data = HelperReadFile(t, "testdata/8.txt")
+		want = 132 // the 132nd ciphertext
+	)
+
+	cts := make([][]byte, 0)
+	for _, h := range bytes.Split(data, []byte("\n")) {
+		cts = append(cts, HelperHexDecode(t, string(h)))
+	}
+
+	got := -1
+	for i, ct := range cts {
+		if Is128ECB(ct) {
+			t.Logf("found #%d: %x", i, ct)
+			got = i
+			break
+		}
+	}
+
+	if got != want {
+		t.Errorf("got %d, want %d", got, want)
+	}
+}
