@@ -43,7 +43,7 @@ func HelperReadFileBase64(tb testing.TB, name string) []byte {
 	return res
 }
 
-func TestHexToBase64(t *testing.T) {
+func TestChallenge1(t *testing.T) {
 	t.Parallel()
 	var (
 		s    = "49276d206b696c6c696e6720796f757220627261696e206c696b65206120706f69736f6e6f7573206d757368726f6f6d"
@@ -59,7 +59,7 @@ func TestHexToBase64(t *testing.T) {
 	}
 }
 
-func TestXORBytes(t *testing.T) {
+func TestChallenge2(t *testing.T) {
 	t.Parallel()
 	var (
 		a    = HelperHexDecode(t, "1c0111001f010100061a024b53535009181c")
@@ -76,7 +76,7 @@ func TestXORBytes(t *testing.T) {
 	}
 }
 
-func TestSingleXORFindKey(t *testing.T) {
+func TestChallenge3(t *testing.T) {
 	t.Parallel()
 	var (
 		ct        = HelperHexDecode(t, "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
@@ -94,7 +94,7 @@ func TestSingleXORFindKey(t *testing.T) {
 	t.Logf("solve: %s", XORByte(ct, got))
 }
 
-func TestDetectSingleXOR(t *testing.T) {
+func TestChallenge4(t *testing.T) {
 	t.Parallel()
 	var (
 		data = HelperReadFile(t, "testdata/4.txt")
@@ -121,7 +121,7 @@ func TestDetectSingleXOR(t *testing.T) {
 	t.Logf("solve: %s", pt)
 }
 
-func TestRepeatingXOR(t *testing.T) {
+func TestChallenge5(t *testing.T) {
 	t.Parallel()
 	var (
 		pt   = []byte("Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal")
@@ -152,7 +152,7 @@ func TestHamming(t *testing.T) {
 	}
 }
 
-func TestRepeatingXORFindKey(t *testing.T) {
+func TestChallenge6(t *testing.T) {
 	t.Parallel()
 	var (
 		ct   = HelperReadFileBase64(t, "testdata/6.txt")
@@ -170,7 +170,7 @@ func TestRepeatingXORFindKey(t *testing.T) {
 	t.Logf("solve: %s", RepeatingXOR(ct, got))
 }
 
-func TestECBDecrypt(t *testing.T) {
+func TestChallenge7(t *testing.T) {
 	t.Parallel()
 	var (
 		ct  = HelperReadFileBase64(t, "testdata/7.txt")
