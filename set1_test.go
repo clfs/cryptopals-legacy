@@ -2,11 +2,13 @@ package cryptopals
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/hex"
 	"os"
 	"testing"
 )
 
+// HelperHexDecode returns s decoded from hex.
 func HelperHexDecode(tb testing.TB, s string) []byte {
 	tb.Helper()
 	h, err := hex.DecodeString(s)
@@ -16,11 +18,26 @@ func HelperHexDecode(tb testing.TB, s string) []byte {
 	return h
 }
 
+// HelperReadFile returns the contents of name.
 func HelperReadFile(tb testing.TB, name string) []byte {
 	tb.Helper()
 	res, err := os.ReadFile(name)
 	if err != nil {
 		tb.Fatalf("could not read %s: %v", name, err)
+	}
+	return res
+}
+
+// HelperReadFileBase64 returns the decoded contents of name.
+func HelperReadFileBase64(tb testing.TB, name string) []byte {
+	tb.Helper()
+	data, err := os.ReadFile(name)
+	if err != nil {
+		tb.Fatalf("could not read %s: %v", name, err)
+	}
+	res, err := base64.StdEncoding.DecodeString(string(data))
+	if err != nil {
+		tb.Fatalf("could not decode %s, %v", name, err)
 	}
 	return res
 }
@@ -58,19 +75,19 @@ func TestXORBytes(t *testing.T) {
 	}
 }
 
-func TestSingleXORRecoverKey(t *testing.T) {
+func TestSingleXORFindKey(t *testing.T) {
 	t.Parallel()
 	var (
 		ct        = HelperHexDecode(t, "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
 		want byte = 88
 	)
 
-	got, err := SingleXORRecoverKey(ct)
+	got, err := SingleXORFindKey(ct)
 	if err != nil {
 		t.Error(err)
 	}
 	if got != want {
-		t.Errorf("got %x, want %x", got, want)
+		t.Errorf("got %d, want %d", got, want)
 	}
 
 	t.Logf("solve: %s", XORByte(ct, got))
@@ -81,8 +98,9 @@ func TestDetectSingleXOR(t *testing.T) {
 	var (
 		data = HelperReadFile(t, "testdata/4.txt")
 		want = HelperHexDecode(t, "7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f")
-		cts  = make([][]byte, 0)
 	)
+
+	cts := make([][]byte, 0)
 	for _, h := range bytes.Split(data, []byte("\n")) {
 		cts = append(cts, HelperHexDecode(t, string(h)))
 	}
@@ -94,7 +112,7 @@ func TestDetectSingleXOR(t *testing.T) {
 	if !bytes.Equal(got, want) {
 		t.Errorf("got %x, want %x", got, want)
 	}
-	pt, err := SingleXORBreak(got)
+	pt, err := SingleXORFindPT(got)
 	if err != nil {
 		t.Error(err)
 	}
@@ -111,7 +129,42 @@ func TestRepeatingXOR(t *testing.T) {
 	)
 
 	got := RepeatingXOR(pt, key)
-	if bytes.Equal(got, want) {
+	if !bytes.Equal(got, want) {
 		t.Errorf("got %x, want %x", got, want)
 	}
+}
+
+func TestHamming(t *testing.T) {
+	t.Parallel()
+	var (
+		a    = []byte("this is a test")
+		b    = []byte("wokka wokka!!!")
+		want = 37
+	)
+
+	got, err := Hamming(a, b)
+	if err != nil {
+		t.Error(err)
+	}
+	if got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestRepeatingXORFindKey(t *testing.T) {
+	t.Parallel()
+	var (
+		ct   = HelperReadFileBase64(t, "testdata/6.txt")
+		want = HelperHexDecode(t, "5465726d696e61746f7220583a204272696e6720746865206e6f697365")
+	)
+
+	got, err := RepeatingXORFindKey(ct)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Errorf("got %x, want %x", got, want)
+	}
+
+	t.Logf("solve: %s", RepeatingXOR(ct, got))
 }

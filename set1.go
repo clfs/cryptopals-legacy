@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"math/bits"
 )
 
 // HexToBase64 converts hex strings to Base64 strings.
@@ -38,33 +39,46 @@ func XORByte(a []byte, b byte) []byte {
 	return res
 }
 
-// SingleXORRecoverKey recovers the key from a single-byte-XOR
+// SingleXORFindKey recovers the key from a single-byte-XOR
 // encrypted ciphertext.
-func SingleXORRecoverKey(ct []byte) (byte, error) {
+func SingleXORFindKey(ct []byte) (byte, error) {
 	if len(ct) == 0 {
 		return 0, fmt.Errorf("empty ciphertext")
 	}
 
-	freq := make(map[byte]int)
-	for _, b := range ct {
-		freq[b] += 1
-	}
-
 	var (
-		mode byte
-		best int
+		bestScore = -math.MaxFloat64 // higher is better
+		bestK     int
 	)
 
-	for b, count := range freq {
-		if count > best {
-			best = count
-			mode = b
+	for k := 0; k < 256; k++ {
+		pt := XORByte(ct, byte(k))
+		score := Englishness(pt)
+		if score > bestScore {
+			bestScore = score
+			bestK = k
 		}
 	}
 
-	// In Western languages, the most common byte
-	// is usually an ASCII space.
-	return mode ^ ' ', nil
+	return byte(bestK), nil
+}
+
+// Englishness returns a score representing how English-like
+// a text is. The score is between 0 and 1 inclusive. If
+// b is empty, its score is 0.
+func Englishness(b []byte) float64 {
+	if len(b) == 0 {
+		return 0
+	}
+
+	var count int
+	for _, v := range b {
+		if v == ' ' || v == 'e' || v == 't' || v == 'a' {
+			count += 1
+		}
+	}
+
+	return float64(count) / float64(len(b))
 }
 
 // Entropy calculates the entropy of a byte slice.
@@ -116,20 +130,100 @@ func SingleXORDetect(cts [][]byte) ([]byte, error) {
 	return bestCT, nil
 }
 
-// SingleXORBreak breaks single-XOR encryption
+// SingleXORFindPT attacks single-XOR encryption
 // and returns a likely plaintext.
-func SingleXORBreak(ct []byte) ([]byte, error) {
-	key, err := SingleXORRecoverKey(ct)
+func SingleXORFindPT(ct []byte) ([]byte, error) {
+	key, err := SingleXORFindKey(ct)
 	if err != nil {
 		return nil, err
 	}
 	return XORByte(ct, key), nil
 }
 
+// RepeatingXOR XORs b against a key. The key
+// will repeat if it's too short.
 func RepeatingXOR(b, key []byte) []byte {
 	res := make([]byte, len(b))
 	for i := range b {
-		res[i] = b[i%len(key)]
+		res[i] = b[i] ^ key[i%len(key)]
 	}
 	return res
+}
+
+// Hamming returns the number of bits that differ between
+// a and b. It fails if their lengths are unequal.
+func Hamming(a, b []byte) (int, error) {
+	if len(a) != len(b) {
+		return 0, fmt.Errorf("unequal lengths")
+	}
+
+	var res int
+	for i := range a {
+		res += bits.OnesCount(uint(a[i] ^ b[i]))
+	}
+	return res, nil
+}
+
+// RepeatingXORFindKey attacks repeating-XOR encryption
+// and returns a likely key.
+func RepeatingXORFindKey(ct []byte) ([]byte, error) {
+	keySize, err := RepeatingXORFindKeySize(ct, 2, 40)
+	if err != nil {
+		return nil, err
+	}
+	chunkSize := (len(ct) + keySize - 1) / keySize
+
+	var (
+		key   = make([]byte, keySize)
+		chunk = make([]byte, chunkSize)
+	)
+
+	for i := range key {
+		// Read the chunk.
+		for j := range chunk {
+			k := j*keySize + i
+			if k < len(ct) {
+				chunk[j] = ct[k]
+			}
+		}
+
+		// Find one byte of key material.
+		key[i], err = SingleXORFindKey(chunk)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return key, nil
+}
+
+// RepeatingXORFindKeySize attacks repeating-XOR encryption
+// and returns a likely key size. It checks all key sizes between
+// a and b, inclusive.
+func RepeatingXORFindKeySize(ct []byte, a, b int) (int, error) {
+	if a > b || 8*b > len(ct) {
+		return 0, fmt.Errorf("invalid range")
+	}
+
+	var (
+		bestSize  int
+		bestScore = math.MaxFloat64
+	)
+
+	for n := a; n <= b; n++ {
+		// Challenge 6 recommends taking multiple blocks.
+		x, y := ct[:n*4], ct[n*4:n*8]
+		h, err := Hamming(x, y)
+		if err != nil {
+			return 0, err
+		}
+
+		score := float64(h) / float64(n)
+		if score < bestScore {
+			bestSize = n
+			bestScore = score
+		}
+	}
+
+	return bestSize, nil
 }
