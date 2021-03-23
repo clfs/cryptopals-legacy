@@ -1,6 +1,19 @@
-package main
+package cryptopals
 
-import "testing"
+import (
+	"bytes"
+	"encoding/hex"
+	"testing"
+)
+
+func HelperHexDecode(tb testing.TB, s string) []byte {
+	tb.Helper()
+	h, err := hex.DecodeString(s)
+	if err != nil {
+		tb.Errorf("error: %v", err)
+	}
+	return h
+}
 
 func TestHexToBase64(t *testing.T) {
 	var (
@@ -12,6 +25,21 @@ func TestHexToBase64(t *testing.T) {
 		t.Errorf("error: %v", err)
 	}
 	if got != want {
+		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestXORBytes(t *testing.T) {
+	var (
+		a    = HelperHexDecode(t, "1c0111001f010100061a024b53535009181c")
+		b    = HelperHexDecode(t, "686974207468652062756c6c277320657965")
+		want = HelperHexDecode(t, "746865206b696420646f6e277420706c6179")
+	)
+	got, err := XORBytes(a, b)
+	if err != nil {
+		t.Errorf("error: %v", err)
+	}
+	if !bytes.Equal(got, want) {
 		t.Errorf("got %v, want %v", got, want)
 	}
 }
