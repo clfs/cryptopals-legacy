@@ -202,7 +202,7 @@ func TestChallenge8(t *testing.T) {
 
 	got := -1
 	for i, ct := range cts {
-		if Is128ECB(ct) {
+		if Is128BitECB(ct) {
 			t.Logf("found #%d: %x", i, ct)
 			got = i
 			break

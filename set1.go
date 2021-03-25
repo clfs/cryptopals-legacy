@@ -278,9 +278,9 @@ func ECBDecrypt(ct []byte, b cipher.Block) ([]byte, error) {
 	return pt, nil
 }
 
-// Is128ECB returns true if the ciphertext is likely
+// Is128BitECB returns true if the ciphertext is likely
 // encrypted with 128-bit ECB.
-func Is128ECB(ct []byte) bool {
+func Is128BitECB(ct []byte) bool {
 	if len(ct)%16 != 0 {
 		return false
 	}

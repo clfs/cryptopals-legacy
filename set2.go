@@ -3,6 +3,7 @@ package cryptopals
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"fmt"
 	"math"
 )
@@ -87,4 +88,64 @@ func (c *CBCCipher) Decrypt(ct, iv []byte) ([]byte, error) {
 	}
 
 	return pt, nil
+}
+
+type ECBOrCBCCipher struct {
+	ecb *ECBCipher
+	cbc *CBCCipher
+}
+
+func NewECBOrCBCCipher() (*ECBOrCBCCipher, error) {
+	key := make([]byte, 16)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
+	}
+
+	ecb, err := NewECBCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	cbc, err := NewCBCCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ECBOrCBCCipher{ecb: ecb, cbc: cbc}, nil
+}
+
+func (e *ECBOrCBCCipher) Encrypt(pt []byte) ([]byte, error) {
+	prefixLen, err := rand.Int(rand.Reader, big6) // [0, 6)
+	if err != nil {
+		return nil, err
+	}
+	suffixLen, err := rand.Int(rand.Reader, big6) // [0, 6)
+	if err != nil {
+		return nil, err
+	}
+	prefixLen.Add(prefixLen, big5) // [5, 10]
+	suffixLen.Add(suffixLen, big5) // [5, 10]
+
+	if RandBool() { // ECB
+		return e.ecb.Encrypt(pt)
+	}
+
+	// Otherwise, CBC.
+	iv := make([]byte, 16)
+	_, err = rand.Read(iv)
+	if err != nil {
+		return nil, err
+	}
+	return e.cbc.Encrypt(pt, iv)
+}
+
+// RandBool returns a cryptographically random bool.
+// It panics on failure.
+func RandBool() bool {
+	n, err := rand.Int(rand.Reader, big2) // [0, 2)
+	if err != nil {
+		panic("lazy")
+	}
+	return n.Bit(0) == 0
 }

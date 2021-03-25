@@ -2,10 +2,12 @@ package cryptopals
 
 import (
 	"bytes"
+	"math"
 	"testing"
 )
 
 func TestChallenge9(t *testing.T) {
+	t.Parallel()
 	var (
 		blockSize = 20
 		in        = []byte("YELLOW SUBMARINE")
@@ -22,10 +24,11 @@ func TestChallenge9(t *testing.T) {
 }
 
 func TestCBCCipher(t *testing.T) {
+	t.Parallel()
 	var (
-		ct  = bytes.Repeat([]byte("\x01"), 16*100)
-		key = bytes.Repeat([]byte("\x02"), 16)
-		iv  = bytes.Repeat([]byte("\x03"), 16)
+		ct  = bytes.Repeat([]byte{1}, 16*100)
+		key = bytes.Repeat([]byte{2}, 16)
+		iv  = bytes.Repeat([]byte{3}, 16)
 	)
 
 	c, err := NewCBCCipher(key)
@@ -46,10 +49,11 @@ func TestCBCCipher(t *testing.T) {
 }
 
 func TestChallenge10(t *testing.T) {
+	t.Parallel()
 	var (
 		ct  = HelperReadFileBase64(t, "testdata/10.txt")
 		key = []byte("YELLOW SUBMARINE")
-		iv  = bytes.Repeat([]byte("\x00"), 16)
+		iv  = bytes.Repeat([]byte{0}, 16)
 	)
 
 	c, err := NewCBCCipher(key)
@@ -62,4 +66,33 @@ func TestChallenge10(t *testing.T) {
 	}
 
 	t.Logf("solve: %s", pt)
+}
+
+func TestChallenge11(t *testing.T) {
+	t.Parallel()
+	var (
+		pt     = bytes.Repeat([]byte{0}, 16*10)
+		trials = 1000
+	)
+
+	c, err := NewECBOrCBCCipher()
+	if err != nil {
+		t.Error(err)
+	}
+
+	var ecb int
+	for i := 0; i < trials; i++ {
+		ct, err := c.Encrypt(pt)
+		if err != nil {
+			t.Error(err)
+		}
+		if Is128BitECB(ct) {
+			ecb++
+		}
+	}
+
+	freq := math.Abs(float64(ecb) / float64(trials))
+	if freq < 0.4 || freq > 0.6 {
+		t.Errorf("unusual freq: %f", freq)
+	}
 }
