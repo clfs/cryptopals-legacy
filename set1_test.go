@@ -2,7 +2,6 @@ package cryptopals
 
 import (
 	"bytes"
-	"crypto/aes"
 	"encoding/base64"
 	"encoding/hex"
 	"os"
@@ -177,11 +176,11 @@ func TestChallenge7(t *testing.T) {
 		key = []byte("YELLOW SUBMARINE")
 	)
 
-	cipher, err := aes.NewCipher(key)
+	c, err := NewECBCipher(key)
 	if err != nil {
 		t.Error(err)
 	}
-	pt, err := ECBDecrypt(ct, cipher)
+	pt, err := c.Decrypt(ct)
 	if err != nil {
 		t.Error(err)
 	}
