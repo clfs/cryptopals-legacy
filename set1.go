@@ -266,18 +266,6 @@ func (e *ECBCipher) Decrypt(ct []byte) ([]byte, error) {
 	return pt, nil
 }
 
-// ECBDecrypt decrypts an ECB ciphertext.
-func ECBDecrypt(ct []byte, b cipher.Block) ([]byte, error) {
-	if len(ct)%b.BlockSize() != 0 {
-		return nil, fmt.Errorf("invalid ECB ciphertext")
-	}
-	pt := make([]byte, len(ct))
-	for i := 0; i < len(pt); i += b.BlockSize() {
-		b.Decrypt(pt[i:], ct[i:])
-	}
-	return pt, nil
-}
-
 // Is128BitECB returns true if the ciphertext is likely
 // encrypted with 128-bit ECB.
 func Is128BitECB(ct []byte) bool {
