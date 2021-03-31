@@ -23,6 +23,30 @@ func TestChallenge9(t *testing.T) {
 	}
 }
 
+func TestECBCipher(t *testing.T) {
+	t.Parallel()
+	var (
+		pt  = bytes.Repeat([]byte{0}, 16*2)
+		key = bytes.Repeat([]byte{0}, 16)
+	)
+
+	ecb, err := NewECBCipher(key)
+	if err != nil {
+		t.Error(err)
+	}
+	ct1, err := ecb.Encrypt(pt)
+	if err != nil {
+		t.Error(err)
+	}
+	ct2, err := ecb.Encrypt(pt)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(ct1, ct2) {
+		t.Errorf("ct1 %x, ct2 %x", ct1, ct2)
+	}
+}
+
 func TestCBCCipher(t *testing.T) {
 	t.Parallel()
 	var (
@@ -75,18 +99,18 @@ func TestChallenge11(t *testing.T) {
 		trials = 1000
 	)
 
-	c, err := NewECBOrCBCCipher()
+	oracle, err := NewECBOrCBCOracle()
 	if err != nil {
 		t.Error(err)
 	}
 
 	var ecb int
 	for i := 0; i < trials; i++ {
-		ct, err := c.Encrypt(pt)
+		ct, err := oracle.Encrypt(pt)
 		if err != nil {
 			t.Error(err)
 		}
-		if Is128BitECB(ct) {
+		if IsECB(ct, 16) {
 			ecb++
 		}
 	}
@@ -95,4 +119,23 @@ func TestChallenge11(t *testing.T) {
 	if freq < 0.4 || freq > 0.6 {
 		t.Errorf("unusual freq: %f", freq)
 	}
+}
+
+func TestChallenge12(t *testing.T) {
+	t.Parallel()
+	var want = HelperDecodeBase64(t, "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK")
+
+	oracle, err := NewECBAppendOracle(want)
+	if err != nil {
+		t.Error(err)
+	}
+	got, err := ECBAppendRecoverSuffix(oracle)
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("got %x, want %x", got, want)
+	}
+
+	t.Logf("solve: %s", got)
 }

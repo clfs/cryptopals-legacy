@@ -230,10 +230,12 @@ func RepeatingXORFindKeySize(ct []byte, a, b int) (int, error) {
 	return bestSize, nil
 }
 
+// ECBCipher represents an ECB mode cipher.
 type ECBCipher struct {
 	b cipher.Block
 }
 
+// NewECBCipher returns a new ECBCipher.
 func NewECBCipher(key []byte) (*ECBCipher, error) {
 	b, err := aes.NewCipher(key)
 	if err != nil {
@@ -242,6 +244,7 @@ func NewECBCipher(key []byte) (*ECBCipher, error) {
 	return &ECBCipher{b: b}, nil
 }
 
+// Encrypt encrypts a plaintext.
 func (e *ECBCipher) Encrypt(pt []byte) ([]byte, error) {
 	if len(pt)%e.b.BlockSize() != 0 {
 		return nil, fmt.Errorf("invalid ECB plaintext")
@@ -254,6 +257,7 @@ func (e *ECBCipher) Encrypt(pt []byte) ([]byte, error) {
 	return ct, nil
 }
 
+// Decrypt decrypts a ciphertext.
 func (e *ECBCipher) Decrypt(ct []byte) ([]byte, error) {
 	if len(ct)%e.b.BlockSize() != 0 {
 		return nil, fmt.Errorf("invalid ECB ciphertext")
@@ -266,17 +270,17 @@ func (e *ECBCipher) Decrypt(ct []byte) ([]byte, error) {
 	return pt, nil
 }
 
-// Is128BitECB returns true if the ciphertext is likely
-// encrypted with 128-bit ECB.
-func Is128BitECB(ct []byte) bool {
-	if len(ct)%16 != 0 {
+// IsECB returns true if the ciphertext is likely
+// encrypted with ECB.
+func IsECB(ct []byte, bs int) bool {
+	if len(ct)%bs != 0 {
 		return false
 	}
 
 	// The lack of set types is absurdly annoying.
 	cache := make(map[string]struct{})
-	for i := 0; i < len(ct); i += 16 {
-		k := string(ct[i : i+16])
+	for i := 0; i < len(ct); i += bs {
+		k := string(ct[i : i+bs])
 		_, ok := cache[k]
 		if !ok { // Cache miss.
 			cache[k] = struct{}{}
