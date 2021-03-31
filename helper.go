@@ -19,6 +19,7 @@ func HelperDecodeHex(tb testing.TB, s string) []byte {
 
 // HelperDecodeBase64 returns s decoded from Base64.
 func HelperDecodeBase64(tb testing.TB, s string) []byte {
+	tb.Helper()
 	res, err := base64.RawStdEncoding.DecodeString(s)
 	if err != nil {
 		tb.Fatal(err)
