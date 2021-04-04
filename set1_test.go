@@ -143,10 +143,7 @@ func TestChallenge7(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	pt, err := c.Decrypt(ct)
-	if err != nil {
-		t.Error(err)
-	}
+	pt := c.Decrypt(ct)
 
 	t.Logf("solve: %s", pt)
 }

@@ -244,30 +244,28 @@ func NewECBCipher(key []byte) (*ECBCipher, error) {
 	return &ECBCipher{b: b}, nil
 }
 
-// Encrypt encrypts a plaintext.
-func (e *ECBCipher) Encrypt(pt []byte) ([]byte, error) {
+// Encrypt encrypts a plaintext. It panics on failure.
+func (e *ECBCipher) Encrypt(pt []byte) []byte {
 	if len(pt)%e.b.BlockSize() != 0 {
-		return nil, fmt.Errorf("invalid ECB plaintext")
+		panic("invalid ECB plaintext")
 	}
-
 	ct := make([]byte, len(pt))
 	for i := 0; i < len(pt); i += e.b.BlockSize() {
 		e.b.Encrypt(ct[i:], pt[i:])
 	}
-	return ct, nil
+	return ct
 }
 
-// Decrypt decrypts a ciphertext.
-func (e *ECBCipher) Decrypt(ct []byte) ([]byte, error) {
+// Decrypt decrypts a ciphertext. It panics on failure.
+func (e *ECBCipher) Decrypt(ct []byte) []byte {
 	if len(ct)%e.b.BlockSize() != 0 {
-		return nil, fmt.Errorf("invalid ECB ciphertext")
+		panic("invalid ECB ciphertext")
 	}
-
 	pt := make([]byte, len(ct))
 	for i := 0; i < len(ct); i += e.b.BlockSize() {
 		e.b.Decrypt(pt[i:], ct[i:])
 	}
-	return pt, nil
+	return pt
 }
 
 // IsECB returns true if the ciphertext is likely

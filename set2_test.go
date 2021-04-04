@@ -3,6 +3,7 @@ package cryptopals
 import (
 	"bytes"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -14,12 +15,44 @@ func TestChallenge9(t *testing.T) {
 		want      = []byte("YELLOW SUBMARINE\x04\x04\x04\x04")
 	)
 
-	got, err := PKCS7Pad(in, blockSize)
-	if err != nil {
-		t.Error(err)
-	}
+	got := PKCS7Pad(in, blockSize)
 	if !bytes.Equal(got, want) {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestPKCS7Unpad(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		bs        int
+		msg, pMsg []byte
+	}{
+		"challenge 9": {
+			bs:   20,
+			msg:  []byte("YELLOW SUBMARINE"),
+			pMsg: []byte("YELLOW SUBMARINE\x04\x04\x04\x04"),
+		},
+		"extra block": {
+			bs:   5,
+			msg:  []byte("01234"),
+			pMsg: []byte("01234\x05\x05\x05\x05\x05"),
+		},
+	}
+
+	for name, tc := range cases {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := PKCS7Pad(tc.msg, tc.bs)
+			if !bytes.Equal(got, tc.pMsg) {
+				t.Errorf("got %q, want pMsg %q", got, tc.pMsg)
+			}
+
+			got = PKCS7Unpad(got)
+			if !bytes.Equal(got, tc.msg) {
+				t.Errorf("got %q, want msg %q", got, tc.msg)
+			}
+		})
 	}
 }
 
@@ -34,14 +67,9 @@ func TestECBCipher(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	ct1, err := ecb.Encrypt(pt)
-	if err != nil {
-		t.Error(err)
-	}
-	ct2, err := ecb.Encrypt(pt)
-	if err != nil {
-		t.Error(err)
-	}
+
+	ct1 := ecb.Encrypt(pt)
+	ct2 := ecb.Encrypt(pt)
 	if !bytes.Equal(ct1, ct2) {
 		t.Errorf("ct1 %x, ct2 %x", ct1, ct2)
 	}
@@ -138,4 +166,36 @@ func TestChallenge12(t *testing.T) {
 	}
 
 	t.Logf("solve: %s", got)
+}
+
+func TestProfileFor_NoMetacharacters(t *testing.T) {
+	t.Parallel()
+
+	cases := []string{
+		"a&a",
+		"b=b",
+		"c=&c",
+		"=",
+		"&",
+		"&&&===",
+	}
+
+	for i, email := range cases {
+		got := ProfileFor(email)
+		if strings.Count(got, "&") != 2 || strings.Count(got, "=") != 3 {
+			t.Errorf("%d: unescaped metacharacters: %s", i, got)
+		}
+	}
+}
+
+func TestChallenge13(t *testing.T) {
+	m, err := NewECBProfileManager()
+	if err != nil {
+		t.Error(err)
+	}
+
+	profile := NewAdminProfile(m)
+	if !m.IsAdmin(profile) {
+		t.Errorf("not admin profile: %x", profile)
+	}
 }

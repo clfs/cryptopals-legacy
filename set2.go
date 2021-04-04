@@ -6,13 +6,15 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
+	"log"
 	"math"
+	"net/url"
 )
 
 // PKCS7Pad pads a byte slice using PKCS#7.
-func PKCS7Pad(b []byte, blockSize int) ([]byte, error) {
+func PKCS7Pad(b []byte, blockSize int) []byte {
 	if blockSize > math.MaxUint8 {
-		return nil, fmt.Errorf("invalid block size %d", blockSize)
+		panic(fmt.Sprintf("invalid block size %d", blockSize))
 	}
 
 	var (
@@ -24,7 +26,24 @@ func PKCS7Pad(b []byte, blockSize int) ([]byte, error) {
 	for i := len(b); i < len(res); i++ {
 		res[i] = byte(pad)
 	}
-	return res, nil
+	return res
+}
+
+// PKCS7Unpad unpads a byte slice using PKCS#7. It doesn't check any
+// byte other than the last, so it's super insecure. That's not
+// important for any attack; I'm just lazy.
+// It panics on invalid input.
+func PKCS7Unpad(b []byte) []byte {
+	if len(b) == 0 {
+		return b
+	}
+
+	pad := b[len(b)-1]
+	if pad == 0 || int(pad) > len(b) {
+		panic(fmt.Sprintf("invalid pad byte %x", pad))
+	}
+
+	return b[:len(b)-int(pad)]
 }
 
 // CBCCipher represents a CBC mode cipher.
@@ -140,7 +159,7 @@ func (e *ECBOrCBCOracle) Encrypt(pt []byte) ([]byte, error) {
 	suffixLen.Add(suffixLen, big5) // [5, 10]
 
 	if RandBool() { // ECB
-		return e.ecb.Encrypt(pt)
+		return e.ecb.Encrypt(pt), nil
 	}
 
 	// Otherwise, CBC.
@@ -182,28 +201,15 @@ func NewECBAppendOracle(suffix []byte) (*ECBAppendOracle, error) {
 	return &ECBAppendOracle{ecb: ecb, suffix: suffix}, nil
 }
 
-func (e ECBAppendOracle) Encrypt(b []byte) ([]byte, error) {
-	pt, err := PKCS7Pad(append(b, e.suffix...), 16)
-	if err != nil {
-		return nil, err
-	}
-
-	ct, err := e.ecb.Encrypt(pt)
-	if err != nil {
-		return nil, err
-	}
-
-	return ct, nil
+func (e ECBAppendOracle) Encrypt(b []byte) []byte {
+	pt := PKCS7Pad(append(b, e.suffix...), 16)
+	return e.ecb.Encrypt(pt)
 }
 
 func ECBAppendFindBlockSize(oracle *ECBAppendOracle) (int, error) {
 	for bs := 2; bs <= 128; bs++ {
 		pt := bytes.Repeat([]byte{0}, bs*2)
-
-		ct, err := oracle.Encrypt(pt)
-		if err != nil {
-			return 0, err
-		}
+		ct := oracle.Encrypt(pt)
 
 		if IsECB(ct, bs) {
 			return bs, nil
@@ -218,20 +224,12 @@ func ECBAppendFindSuffixLen(oracle *ECBAppendOracle) (int, error) {
 		return 0, err
 	}
 
-	ct, err := oracle.Encrypt([]byte{})
-	if err != nil {
-		return 0, err
-	}
-
+	ct := oracle.Encrypt([]byte{})
 	bound := len(ct)
 
 	for i := 1; i <= bs; i++ {
 		pt := bytes.Repeat([]byte{0}, i)
-
-		ct, err := oracle.Encrypt(pt)
-		if err != nil {
-			return 0, err
-		}
+		ct := oracle.Encrypt(pt)
 
 		if len(ct) > bound {
 			return bound - i, nil
@@ -256,17 +254,11 @@ func ECBAppendRecoverSuffix(oracle *ECBAppendOracle) ([]byte, error) {
 
 	for i := 0; i < suffixLen; i++ {
 		referencePT := bytes.Repeat([]byte{0}, bs-(len(res)%bs)-1)
-		referenceCT, err := oracle.Encrypt(referencePT)
-		if err != nil {
-			return nil, err
-		}
+		referenceCT := oracle.Encrypt(referencePT)
 
 		for j := 0; j < 256; j++ {
 			pt := append(append(referencePT, res...), byte(j))
-			ct, err := oracle.Encrypt(pt)
-			if err != nil {
-				return nil, err
-			}
+			ct := oracle.Encrypt(pt)
 
 			if bytes.Equal(ct[:len(pt)], referenceCT[:len(pt)]) {
 				res = append(res, byte(j))
@@ -276,4 +268,79 @@ func ECBAppendRecoverSuffix(oracle *ECBAppendOracle) ([]byte, error) {
 	}
 
 	return res, nil
+}
+
+func ProfileFor(email string) string {
+	v := url.Values{}
+	v.Add("email", email)
+	v.Add("uid", "10") // Random user ID lengths just make the attack more annoying.
+	v.Add("role", "user")
+	return v.Encode()
+}
+
+type ECBProfileManager struct {
+	ecb *ECBCipher
+}
+
+func NewECBProfileManager() (*ECBProfileManager, error) {
+	key := make([]byte, 16)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
+	}
+
+	ecb, err := NewECBCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ECBProfileManager{ecb: ecb}, nil
+}
+
+func (m ECBProfileManager) Profile(email string) string {
+	profile := ProfileFor(email)
+	log.Println(profile)
+	pt := PKCS7Pad([]byte(profile), 16)
+	return string(m.ecb.Encrypt(pt))
+}
+
+func (m ECBProfileManager) IsAdmin(profile string) bool {
+	pt := m.ecb.Decrypt([]byte(profile))
+	pt = PKCS7Unpad(pt)
+
+	values, err := url.ParseQuery(string(pt))
+	if err != nil {
+		return false
+	}
+	return values.Get("role") == "admin"
+}
+
+// NewAdminProfile performs a cut-and-paste ECB attack to
+// transform a user profile into an admin profile.
+func NewAdminProfile(m *ECBProfileManager) string {
+	// Note that url.Values sorts alphabetically by key.
+
+	// |<------------>|
+	// email=jeffy.b%40amazon.com&role=user&uid=10.....
+	b1 := m.Profile("jeffy.b@amazon.com")[:16]
+
+	//                 |<------------>|
+	// email=jeffy.b%40amazon.com&role=user&uid=10.....
+	b2 := m.Profile("jeffy.b@amazon.com")[16:32]
+
+	//                 |<------------>|
+	// email=pizza%40x.admin&role=user&uid=10..........
+	b3 := m.Profile("pizza@x.admin")[16:32]
+
+	//                 |<------------>|
+	// email=y%40z.com&role=user&uid=10................
+	b4 := m.Profile("y@z.com")[16:32]
+
+	//                                 |<------------>|
+	// email=y%40z.com&role=user&uid=10................
+	b5 := m.Profile("y@z.com")[32:48]
+
+	// |<------------>||<------------>||<------------>||<------------>||<------------>|
+	// email=jeffy.b%40amazon.com&role=admin&role=user&role=user&uid=10................
+	return b1 + b2 + b3 + b4 + b5
 }
