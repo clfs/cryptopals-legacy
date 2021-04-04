@@ -157,6 +157,25 @@ func (e *ECBOrCBCOracle) Encrypt(pt []byte) ([]byte, error) {
 	prefixLen.Add(prefixLen, big5) // [5, 10]
 	suffixLen.Add(suffixLen, big5) // [5, 10]
 
+	var (
+		prefix = make([]byte, prefixLen.Int64())
+		suffix = make([]byte, suffixLen.Int64())
+	)
+
+	_, err = rand.Read(prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = rand.Read(suffix)
+	if err != nil {
+		return nil, err
+	}
+
+	pt = append(pt, suffix...)
+	pt = append(prefix, pt...)
+	pt = PKCS7Pad(pt, 16)
+
 	if RandBool() { // ECB
 		return e.ecb.Encrypt(pt), nil
 	}
