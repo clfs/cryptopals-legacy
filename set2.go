@@ -6,7 +6,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
-	"log"
 	"math"
 	"net/url"
 )
@@ -299,7 +298,6 @@ func NewECBProfileManager() (*ECBProfileManager, error) {
 
 func (m ECBProfileManager) Profile(email string) string {
 	profile := ProfileFor(email)
-	log.Println(profile)
 	pt := PKCS7Pad([]byte(profile), 16)
 	return string(m.ecb.Encrypt(pt))
 }
