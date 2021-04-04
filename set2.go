@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
+	"log"
 	"math"
 	"net/url"
 )
@@ -229,7 +230,7 @@ func ECBAppendFindBlockSize(oracle *ECBAppendOracle) (int, error) {
 		pt := bytes.Repeat([]byte{0}, bs*2)
 		ct := oracle.Encrypt(pt)
 
-		if IsECB(ct, bs) {
+		if IsECB(ct[:bs*2], bs) {
 			return bs, nil
 		}
 	}
@@ -241,6 +242,7 @@ func ECBAppendFindSuffixLen(oracle *ECBAppendOracle) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	log.Println(bs)
 
 	ct := oracle.Encrypt([]byte{})
 	bound := len(ct)
