@@ -320,27 +320,19 @@ func (m ECBProfileManager) IsAdmin(profile string) bool {
 func NewAdminProfile(m *ECBProfileManager) string {
 	// Note that url.Values sorts alphabetically by key.
 
-	// |<------------>|
+	// |<------------>||<------------>|
 	// email=jeffy.b%40amazon.com&role=user&uid=10.....
-	b1 := m.Profile("jeffy.b@amazon.com")[:16]
-
-	//                 |<------------>|
-	// email=jeffy.b%40amazon.com&role=user&uid=10.....
-	b2 := m.Profile("jeffy.b@amazon.com")[16:32]
+	b12 := m.Profile("jeffy.b@amazon.com")[:32]
 
 	//                 |<------------>|
 	// email=pizza%40x.admin&role=user&uid=10..........
 	b3 := m.Profile("pizza@x.admin")[16:32]
 
-	//                 |<------------>|
+	//                 |<------------>||<------------>|
 	// email=y%40z.com&role=user&uid=10................
-	b4 := m.Profile("y@z.com")[16:32]
-
-	//                                 |<------------>|
-	// email=y%40z.com&role=user&uid=10................
-	b5 := m.Profile("y@z.com")[32:48]
+	b45 := m.Profile("y@z.com")[16:48]
 
 	// |<------------>||<------------>||<------------>||<------------>||<------------>|
 	// email=jeffy.b%40amazon.com&role=admin&role=user&role=user&uid=10................
-	return b1 + b2 + b3 + b4 + b5
+	return b12 + b3 + b45
 }
