@@ -319,6 +319,7 @@ func NewECBProfileManager() (*ECBProfileManager, error) {
 
 func (m ECBProfileManager) Profile(email string) string {
 	profile := ProfileFor(email)
+	log.Println(profile)
 	pt := PKCS7Pad([]byte(profile), 16)
 	return string(m.ecb.Encrypt(pt))
 }
@@ -341,17 +342,22 @@ func NewAdminProfile(m *ECBProfileManager) string {
 
 	// |<------------>||<------------>|
 	// email=jeffy.b%40amazon.com&role=user&uid=10.....
-	b12 := m.Profile("jeffy.b@amazon.com")[:32]
-
-	//                 |<------------>|
-	// email=pizza%40x.admin&role=user&uid=10..........
-	b3 := m.Profile("pizza@x.admin")[16:32]
+	left := m.Profile("jeffy.b@amazon.com")[:32]
 
 	//                 |<------------>||<------------>|
-	// email=y%40z.com&role=user&uid=10................
-	b45 := m.Profile("y@z.com")[16:48]
+	// email=pizza%40x.admin&role=user&uid=10..........
+	right := m.Profile("pizza@x.admin")[16:]
 
-	// |<------------>||<------------>||<------------>||<------------>||<------------>|
-	// email=jeffy.b%40amazon.com&role=admin&role=user&role=user&uid=10................
-	return b12 + b3 + b45
+	// |<------------>||<------------>||<------------>||<------------>|
+	// email=jeffy.b%40amazon.com&role=admin&role=user&uid=10..........
+	return left + right
+}
+
+type ECBPrependAppendOracle struct {
+	ecb    *ECBCipher
+	suffix []byte
+}
+
+func NewECBPrependAppendOracle(suffix []byte) (*ECBPrependAppendOracle, error) {
+	return nil, nil
 }
